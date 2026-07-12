@@ -1,0 +1,52 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Temporary files
+*~
+*.swp
+*.swo
+*.bak
+*.tmp
+
+# Log files
+*.log
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+venv/
+.venv/
+env/
+
+# ESP-IDF build outputs
+build/
+**/build/
+*.bin
+*.elf
+*.map
+sdkconfig
+sdkconfig.old
+flasher_args.json
+managed_components/
+**/managed_components/
+.espressif/
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+
+# IDE
+.vscode/
+.idea/
+
+# Language servers
+.clangd/
+.ccls-cache/
+compile_commands.json
