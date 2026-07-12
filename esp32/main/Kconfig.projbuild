@@ -1,0 +1,32 @@
+menu "AI-OS Configuration"
+
+    menu "WiFi Configuration"
+        config AIOS_WIFI_SSID
+            string "WiFi SSID"
+            default "myssid"
+            help
+                Your WiFi network name.
+
+        config AIOS_WIFI_PASSWORD
+            string "WiFi Password"
+            default "mypassword"
+            help
+                Your WiFi network password.
+    endmenu
+
+    menu "Server Configuration"
+        config AIOS_SERVER_HOST
+            string "Server Host"
+            default "192.168.1.100"
+            help
+                AI-OS Server IP address.
+
+        config AIOS_SERVER_PORT
+            int "Server Port"
+            default 8000
+            range 1 65535
+            help
+                AI-OS Server port.
+    endmenu
+
+endmenu
