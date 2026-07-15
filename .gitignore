@@ -3,6 +3,9 @@
 .AppleDouble
 .LSOverride
 
+# Pytest
+.pytest_cache/
+
 # Temporary files
 *~
 *.swp

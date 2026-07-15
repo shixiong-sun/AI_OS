@@ -1,6 +1,6 @@
 # AI-OS Roadmap
 
-## V0.1 — 项目初始化（当前）
+## V0.1 — 项目初始化 ✅
 
 - [x] Git 仓库创建
 - [x] 项目目录结构
@@ -8,22 +8,22 @@
 - [x] Roadmap 制定
 - [x] Architecture 文档
 - [x] ADR 初始化
-- [ ] 首次 Commit
+- [x] 首次 Commit
 
-## V0.2 — FastAPI 服务器
+## V0.2 — FastAPI 服务器 ✅
 
-- [ ] FastAPI 项目脚手架
-- [ ] 基础 API 端点
-- [ ] 健康检查
-- [ ] 日志与错误处理
-- [ ] 单元测试
+- [x] FastAPI 项目脚手架
+- [x] 基础 API 端点
+- [x] 健康检查
+- [x] 日志与错误处理
+- [x] 单元测试
 
-## V0.3 — ESP32 联网通信
+## V0.3 — ESP32 联网通信 ✅
 
-- [ ] ESP-IDF 项目初始化
-- [ ] WiFi 连接
-- [ ] HTTP/WebSocket 客户端
-- [ ] 与服务器通信
+- [x] ESP-IDF 项目初始化
+- [x] WiFi 连接
+- [x] HTTP/WebSocket 客户端
+- [x] 与服务器通信
 
 ## V0.4 — 麦克风录音
 
