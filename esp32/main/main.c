@@ -2,13 +2,13 @@
  * @file main.c
  * @brief AI-OS ESP32 主程序
  *
- * Sprint 3 目标：ESP32 联网通信
+ * Sprint 4 目标：ESP32 音频采集（INMP441 + I2S）
  *   1. 连接 WiFi（凭据从 menuconfig 读取）
  *   2. 发送 HTTP GET 到 AI-OS 服务器 /health 接口
  *   3. 打印服务器响应状态和版本
  *
  * 程序流程：
- *   NVS 初始化 → WiFi 连接 → 服务器通信 → 循环等待
+ *   NVS 初始化 → WiFi 连接 → 服务器通信 → I2S录音 → HTTP上传 → 循环
  *
  * 如果 WiFi 或服务器连接失败，程序会等待 10 秒后自动重启，
  * 这是一个简单的容错机制，后续 Sprint 会改成更优雅的重试。
@@ -24,6 +24,7 @@
 
 #include "wifi.h"
 #include "server_client.h"
+#include "audio.h"
 
 /* ── 日志标签 ────────────────────────────────────────── */
 static const char *TAG = "aios_main";
@@ -106,24 +107,69 @@ void app_main(void)
         ESP_LOGI(TAG, "===========================================");
     } else {
         ESP_LOGE(TAG, "❌ 服务器无法访问，请检查网络和服务器状态");
-        /*
-         * 服务器连接失败不需要重启，因为 WiFi 是好的。
-         * 程序会继续运行并定期尝试重连。
-         * TODO: 后续 Sprint 添加定期重试逻辑。
-         */
     }
 
-    /* ── 第五步：主循环 ────────────────────────────────── */
+    /* ── 第五步：录音并上传 ────────────────────────────── */
     /*
-     * ESP-IDF 要求 app_main 不能返回，否则会触发看门狗重启。
-     * 因此这里进入一个无限循环。
+     * 初始化 I2S 麦克风（INMP441），录制一段音频，
+     * 将 PCM 数据上传到 AI-OS 服务器保存为 WAV 文件。
+     *
+     * 录音参数通过 menuconfig 配置：
+     *   CONFIG_AIOS_AUDIO_DURATION_MS — 录音时长
+     */
+    if (ret == ESP_OK) {
+        ESP_LOGI(TAG, "正在初始化 I2S 麦克风...");
+
+        ret = audio_init();
+        if (ret == ESP_OK) {
+            /* 计算缓冲区大小：采样率 * 时长(秒) * 字节数/样本 */
+            size_t buf_size = (CONFIG_AIOS_AUDIO_DURATION_MS / 1000)
+                              * AUDIO_SAMPLE_RATE * (AUDIO_BITS / 8);
+            char *audio_buf = malloc(buf_size);
+            if (audio_buf) {
+                size_t bytes_read = 0;
+
+                ESP_LOGI(TAG, "开始录音 (%d ms)...",
+                         CONFIG_AIOS_AUDIO_DURATION_MS);
+
+                ret = audio_record(audio_buf, buf_size, &bytes_read);
+                if (ret == ESP_OK && bytes_read > 0) {
+                    ESP_LOGI(TAG, "录音完成: %zu 字节 (%.1f 秒)",
+                             bytes_read,
+                             (float)bytes_read / (AUDIO_SAMPLE_RATE * 2));
+
+                    ESP_LOGI(TAG, "正在上传音频到服务器...");
+                    ret = server_upload_audio(audio_buf, bytes_read);
+                    if (ret == ESP_OK) {
+                        ESP_LOGI(TAG, "✅ 音频上传成功！");
+                    } else {
+                        ESP_LOGE(TAG, "❌ 音频上传失败");
+                    }
+                } else {
+                    ESP_LOGE(TAG, "录音失败");
+                }
+
+                free(audio_buf);
+            } else {
+                ESP_LOGE(TAG, "内存不足，无法分配录音缓冲区");
+            }
+
+            audio_deinit();
+        } else {
+            ESP_LOGE(TAG, "I2S 麦克风初始化失败");
+        }
+    }
+
+    /* ── 第六步：主循环 ────────────────────────────────── */
+    /*
+     * ESP-IDF 要求 app_main 不能返回。
      * 后续 Sprint 会在这里添加：
      * - 定期录音和发送
      * - 接收 TTS 音频并播放
      * - 主动通知检查
      */
     while (1) {
-        /* 每 60 秒唤醒一次，目前只保持运行 */
+        /* 每 60 秒唤醒一次，保持运行 */
         vTaskDelay(pdMS_TO_TICKS(60000));
     }
 }

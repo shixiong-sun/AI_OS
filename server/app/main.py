@@ -18,6 +18,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # 导入本地模块
 from app.config.settings import settings          # 全局配置
 from app.api.health import router as health_router  # 健康检查路由
+from app.api.audio import router as audio_router    # 音频上传路由
 
 
 @asynccontextmanager
@@ -65,12 +66,25 @@ app.add_middleware(
 
 # ── 注册路由 ────────────────────────────────────────────
 #
-# 当前路由：
-#   GET /health  → 健康检查
+# 根路径：AI-OS 入口
+# 访问 http://localhost:8000/ 返回项目状态
+@app.get("/")
+async def root():
+    """项目入口，返回 AI-OS 运行状态。"""
+    return {
+        "project": "AI_OS",
+        "status": "running",
+    }
+
 #
-# 后续路由（按 Sprint 逐步添加）：
-#   POST /audio  → 接收 ESP32 录音
-#   POST /chat   → 对话接口
-#   WS  /ws      → WebSocket 实时通信
+# 当前路由：
+#   GET /        -> 项目入口
+#   GET /health  -> 健康检查
+#   POST /audio  -> 接收 ESP32 录音
+#
+# 后续路由：
+#   POST /chat   -> 对话接口
+#   WS  /ws      -> WebSocket 实时通信
 #
 app.include_router(health_router)
+app.include_router(audio_router)

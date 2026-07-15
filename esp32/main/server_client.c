@@ -54,7 +54,9 @@ static esp_err_t _http_event_handler(esp_http_client_event_t *evt)
             response_buf = realloc(response_buf, response_len + evt->data_len + 1);
         }
         /* 将新数据拷贝到缓冲区末尾 */
-        memcpy(response_buf + response_len, evt->data, evt->data_len);
+        if (response_buf) {
+            memcpy(response_buf + response_len, evt->data, evt->data_len);
+        }
         response_len += evt->data_len;
         response_buf[response_len] = '\0';  /* 字符串结尾 */
         break;
@@ -170,3 +172,126 @@ esp_err_t server_test_connection(void)
 
     return err;
 }
+
+
+/**
+ * @brief HTTP 事件回调函数（音频上传专用）
+ *
+ * 和 _http_event_handler 结构相同，但专门用于处理音频上传响应。
+ * 因为 esp_http_client 每个实例需要独立的事件回调。
+ */
+static esp_err_t _audio_upload_event_handler(esp_http_client_event_t *evt)
+{
+    static char *response_buf = NULL;
+    static int response_len = 0;
+
+    switch (evt->event_id) {
+    case HTTP_EVENT_ON_DATA:
+        if (!response_buf) {
+            response_buf = calloc(1, evt->data_len + 1);
+            response_len = 0;
+        } else {
+            response_buf = realloc(response_buf, response_len + evt->data_len + 1);
+        }
+        memcpy(response_buf + response_len, evt->data, evt->data_len);
+        response_len += evt->data_len;
+        response_buf[response_len] = '\0';
+        break;
+
+    case HTTP_EVENT_ON_FINISH:
+        if (response_buf) {
+            ESP_LOGI(TAG, "服务器响应: %s", response_buf);
+
+            cJSON *root = cJSON_Parse(response_buf);
+            if (root) {
+                cJSON *status = cJSON_GetObjectItem(root, "status");
+                if (status && cJSON_IsString(status)) {
+                    ESP_LOGI(TAG, "上传结果: %s", status->valuestring);
+                }
+                cJSON_Delete(root);
+            }
+
+            free(response_buf);
+            response_buf = NULL;
+            response_len = 0;
+        }
+        break;
+
+    case HTTP_EVENT_ERROR:
+        ESP_LOGE(TAG, "音频上传 HTTP 请求失败");
+        break;
+
+    default:
+        break;
+    }
+    return ESP_OK;
+}
+
+
+esp_err_t server_upload_audio(const char *pcm_data, size_t data_size)
+{
+    if (!pcm_data || data_size == 0) {
+        ESP_LOGE(TAG, "音频数据为空");
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    /* ── 构造请求 URL ────────────────────────────── */
+    char url[160];
+    snprintf(url, sizeof(url),
+             "http://%s:%d/audio/raw",
+             CONFIG_AIOS_SERVER_HOST,
+             CONFIG_AIOS_SERVER_PORT);
+
+    ESP_LOGI(TAG, "正在上传音频 (%zu 字节) 到 %s", data_size, url);
+
+    /* ── 配置 HTTP POST 请求 ─────────────────────── */
+    /*
+     * 以裸数据（application/octet-stream）方式发送 PCM 音频。
+     * 服务器接收后在服务端添加 WAV 头部。
+     *
+     * 避免使用 multipart/form-data，ESP32 端构造简单。
+     */
+    esp_http_client_config_t config = {
+        .url = url,
+        .method = HTTP_METHOD_POST,
+        .event_handler = _audio_upload_event_handler,
+        .timeout_ms = 30000,
+        .buffer_size = 1024,
+    };
+
+    esp_http_client_handle_t client = esp_http_client_init(&config);
+
+    /* 设置请求头 */
+    esp_http_client_set_header(client, "Content-Type", "application/octet-stream");
+
+    /* 设置请求体（PCM 数据） */
+    esp_http_client_set_post_field(client, pcm_data, data_size);
+
+    /* ── 执行请求 ────────────────────────────────── */
+    esp_err_t err = esp_http_client_perform(client);
+
+    if (err == ESP_OK) {
+        int status_code = esp_http_client_get_status_code(client);
+        ESP_LOGI(TAG, "HTTP 状态码: %d", status_code);
+
+        if (status_code == 200) {
+            ESP_LOGI(TAG, "音频上传成功！");
+        } else {
+            ESP_LOGW(TAG, "服务器返回非预期状态码: %d", status_code);
+            err = ESP_FAIL;
+        }
+    } else {
+        ESP_LOGE(TAG, "音频上传失败: %s", esp_err_to_name(err));
+    }
+
+    esp_http_client_cleanup(client);
+    return err;
+}
+
+
+/**
+ * @brief HTTP 事件回调函数（音频上传专用）
+ *
+ * 和 _http_event_handler 结构相同，但专门用于处理音频上传响应。
+ * 因为 esp_http_client 每个实例需要独立的事件回调。
+ */

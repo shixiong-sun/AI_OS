@@ -29,4 +29,34 @@ menu "AI-OS Configuration"
                 AI-OS Server port.
     endmenu
 
+    menu "I2S Microphone Configuration"
+        config AIOS_I2S_BCLK_PIN
+            int "I2S BCLK GPIO"
+            default 4
+            range 0 48
+            help
+                I2S Bit Clock pin (connect to INMP441 BCLK).
+
+        config AIOS_I2S_LRCK_PIN
+            int "I2S LRCK (WS) GPIO"
+            default 5
+            range 0 48
+            help
+                I2S Left/Right Clock (Word Select) pin (connect to INMP441 LRCK).
+
+        config AIOS_I2S_DIN_PIN
+            int "I2S DIN (Data In) GPIO"
+            default 6
+            range 0 48
+            help
+                I2S Data In pin (connect to INMP441 DOUT).
+
+        config AIOS_AUDIO_DURATION_MS
+            int "Recording duration (ms)"
+            default 3000
+            range 1000 10000
+            help
+                Duration of each audio recording in milliseconds.
+    endmenu
+
 endmenu
